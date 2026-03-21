@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<link rel="manifest" href="manifest.json">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Adrenaline Fitness App</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --black:#080808;--red:#e8162a;--red-dark:#a50f1e;--red-dim:rgba(232,22,42,0.12);
+  --white:#f2f0eb;--gray:#141414;--mid:#1e1e1e;--muted:#666;--border:#222;
+  --gold:#e8c840;--plat:#b0b0e0;
+  --font-d:'Bebas Neue',sans-serif;--font-b:'DM Sans',sans-serif;
+  --safe-bottom: env(safe-area-inset-bottom, 16px);
+}
+html,body{height:100%;background:#000;display:flex;justify-content:center;align-items:center;font-family:var(--font-b);}
+
+/* PHONE SHELL */
+.phone{
+  width:390px;height:844px;background:var(--black);border-radius:48px;
+  overflow:hidden;position:relative;
+  box-shadow:0 0 0 10px #111,0 0 0 12px #1a1a1a,0 40px 80px rgba(0,0,0,0.8),0 0 60px rgba(232,22,42,0.05);
+  display:flex;flex-direction:column;
+}
+
+/* STATUS BAR */
+.status-bar{
+  height:44px;padding:12px 28px 0;display:flex;justify-content:space-between;align-items:center;
+  font-size:12px;font-weight:600;color:var(--white);flex-shrink:0;position:relative;z-index:50;
+}
+.status-time{font-size:15px;font-weight:700;letter-spacing:0.02em;}
+.status-icons{display:flex;gap:6px;align-items:center;}
+.status-icons svg{width:16px;height:16px;fill:var(--white);}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:34px;background:#000;border-radius:0 0 20px 20px;}
+
+/* SCROLL AREA */
+.screen{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;position:relative;}
+.screen::-webkit-scrollbar{display:none;}
+
+/* BOTTOM NAV */
+.bottom-nav{
+  height:80px;background:rgba(10,10,10,0.98);border-top:0.5px solid var(--border);
+  display:flex;align-items:flex-start;padding-top:10px;flex-shrink:0;
+  backdrop-filter:blur(20px);
+}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:4px 0;transition:all 0.2s;}
+.nav-item svg{width:22px;height:22px;stroke:var(--muted);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:stroke 0.2s;}
+.nav-item span{font-size:10px;color:var(--muted);font-weight:500;transition:color 0.2s;}
+.nav-item.active svg{stroke:var(--red);}
+.nav-item.active span{color:var(--red);}
+.nav-item .dot{width:4px;height:4px;background:var(--red);border-radius:50%;opacity:0;transition:opacity 0.2s;}
+.nav-item.active .dot{opacity:1;}
+
+/* SCREENS */
+.page{display:none;min-height:100%;}
+.page.active{display:block;}
+
+/* ========== LOGIN ========== */
+.login-bg{
+  min-height:844px;background:var(--black);
+  display:flex;flex-direction:column;justify-content:flex-end;padding:0 28px 40px;
+  position:relative;overflow:hidden;
+}
+.login-gradient{
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 60% 20%,rgba(232,22,42,0.18) 0%,transparent 70%);
+  pointer-events:none;
+}
+.login-logo-area{position:absolute;top:80px;left:28px;}
+.login-logo{font-family:var(--font-d);font-size:42px;letter-spacing:0.06em;color:var(--red);line-height:1;}
+.login-tagline{font-size:11px;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase;margin-top:4px;}
+.login-art{
+  position:absolute;right:-20px;top:60px;
+  width:220px;height:280px;
+  background:linear-gradient(135deg,var(--red-dim) 0%,transparent 60%);
+  border-radius:40px;transform:rotate(15deg);
+}
+.login-art2{
+  position:absolute;right:40px;top:100px;
+  width:140px;height:180px;
+  border:0.5px solid rgba(232,22,42,0.15);border-radius:30px;transform:rotate(8deg);
+}
+.login-content{position:relative;z-index:2;}
+.login-title{font-family:var(--font-d);font-size:48px;line-height:0.95;color:var(--white);margin-bottom:8px;}
+.login-title span{color:var(--red);}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:32px;line-height:1.6;font-weight:300;}
+.input-group{margin-bottom:12px;}
+.input-label{font-size:11px;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;font-weight:500;}
+.input-field{
+  width:100%;background:var(--mid);border:0.5px solid var(--border);border-radius:14px;
+  padding:14px 16px;font-size:15px;color:var(--white);font-family:var(--font-b);
+  outline:none;transition:border-color 0.2s;
+}
+.input-field::placeholder{color:var(--muted);}
+.input-field:focus{border-color:var(--red);}
+.btn-login{
+  width:100%;background:var(--red);color:var(--white);padding:16px;border-radius:100px;
+  font-size:15px;font-weight:600;font-family:var(--font-b);cursor:pointer;border:none;
+  margin-top:8px;transition:background 0.2s;letter-spacing:0.03em;
+}
+.btn-login:hover{background:var(--red-dark);}
+.login-alt{text-align:center;margin-top:16px;font-size:13px;color:var(--muted);}
+.login-alt span{color:var(--white);cursor:pointer;font-weight:500;}
+.login-divider{display:flex;align-items:center;gap:12px;margin:20px 0;}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:0.5px;background:var(--border);}
+.login-divider span{font-size:11px;color:var(--muted);}
+.btn-google{
+  width:100%;background:transparent;color:var(--white);padding:14px;border-radius:100px;
+  font-size:14px;font-weight:500;font-family:var(--font-b);cursor:pointer;
+  border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;gap:10px;
+  transition:border-color 0.2s;
+}
+.btn-google:hover{border-color:#444;}
+
+/* ========== HOME ========== */
+.home-header{padding:20px 20px 0;display:flex;justify-content:space-between;align-items:center;}
+.home-greeting{font-size:13px;color:var(--muted);}
+.home-name{font-family:var(--font-d);font-size:28px;color:var(--white);letter-spacing:0.04em;line-height:1.1;}
+.avatar{width:44px;height:44px;background:var(--red-dim);border:0.5px solid rgba(232,22,42,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.membership-banner{
+  margin:16px 20px;padding:20px;
+  background:linear-gradient(135deg,#1a0508 0%,#100608 100%);
+  border:0.5px solid rgba(232,22,42,0.25);border-radius:24px;position:relative;overflow:hidden;
+}
+.membership-banner::before{
+  content:'';position:absolute;right:-30px;top:-30px;
+  width:140px;height:140px;border-radius:50%;
+  background:radial-gradient(circle,rgba(232,22,42,0.12) 0%,transparent 70%);
+}
+.mb-label{font-size:10px;letter-spacing:0.15em;color:var(--red);text-transform:uppercase;font-weight:500;margin-bottom:4px;}
+.mb-tier{font-family:var(--font-d);font-size:32px;color:var(--gold);letter-spacing:0.06em;}
+.mb-desc{font-size:12px;color:var(--muted);margin-top:2px;font-weight:300;}
+.mb-pct{position:absolute;right:20px;top:50%;transform:translateY(-50%);font-family:var(--font-d);font-size:52px;color:rgba(232,200,64,0.15);letter-spacing:-0.02em;}
+.mb-expires{display:inline-flex;align-items:center;gap:6px;margin-top:12px;background:rgba(232,200,64,0.08);border:0.5px solid rgba(232,200,64,0.15);border-radius:100px;padding:4px 10px;font-size:11px;color:var(--gold);}
+.section-hdr{display:flex;justify-content:space-between;align-items:center;padding:0 20px;margin-bottom:12px;}
+.section-hdr-title{font-family:var(--font-d);font-size:20px;color:var(--white);letter-spacing:0.04em;}
+.section-hdr-link{font-size:12px;color:var(--red);cursor:pointer;}
+.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:0 20px;margin-bottom:24px;}
+.stat-card{background:var(--gray);border:0.5px solid var(--border);border-radius:20px;padding:16px 14px;}
+.stat-icon{font-size:20px;margin-bottom:8px;}
+.stat-val{font-family:var(--font-d);font-size:24px;color:var(--white);line-height:1;}
+.stat-lbl{font-size:10px;color:var(--muted);margin-top:2px;font-weight:300;letter-spacing:0.03em;}
+.quick-actions{padding:0 20px;margin-bottom:24px;}
+.qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.qa-card{
+  background:var(--gray);border:0.5px solid var(--border);border-radius:20px;padding:18px 16px;
+  cursor:pointer;transition:border-color 0.2s;
+}
+.qa-card:hover{border-color:#333;}
+.qa-card.red{background:var(--red);border-color:var(--red);}
+.qa-icon{font-size:24px;margin-bottom:10px;}
+.qa-title{font-size:14px;font-weight:600;color:var(--white);margin-bottom:2px;}
+.qa-sub{font-size:11px;color:rgba(242,240,235,0.5);font-weight:300;}
+.upcoming-section{padding:0 20px;margin-bottom:24px;}
+.class-card{
+  background:var(--mid);border:0.5px solid var(--border);border-radius:18px;
+  padding:16px;display:flex;align-items:center;gap:14px;margin-bottom:10px;
+  cursor:pointer;transition:border-color 0.2s;
+}
+.class-card:hover{border-color:#333;}
+.class-time-box{background:var(--red-dim);border:0.5px solid rgba(232,22,42,0.2);border-radius:12px;padding:10px 12px;text-align:center;flex-shrink:0;}
+.class-time{font-family:var(--font-d);font-size:18px;color:var(--white);line-height:1;}
+.class-ampm{font-size:10px;color:var(--red);letter-spacing:0.08em;}
+.class-info{flex:1;}
+.class-name{font-size:14px;font-weight:600;color:var(--white);margin-bottom:2px;}
+.class-trainer{font-size:12px;color:var(--muted);font-weight:300;}
+.class-tag{background:var(--red-dim);border:0.5px solid rgba(232,22,42,0.2);color:var(--red);font-size:10px;padding:3px 8px;border-radius:100px;margin-top:4px;display:inline-block;}
+.class-spots{font-size:11px;color:var(--muted);text-align:right;flex-shrink:0;}
+.class-spots strong{color:var(--white);display:block;font-size:14px;font-weight:600;}
+
+/* ========== SCHEDULE ========== */
+.sched-header{padding:20px 20px 0;}
+.sched-title{font-family:var(--font-d);font-size:32px;color:var(--white);letter-spacing:0.04em;margin-bottom:4px;}
+.sched-sub{font-size:13px;color:var(--muted);font-weight:300;}
+.week-strip{display:flex;gap:8px;padding:16px 20px;overflow-x:auto;scrollbar-width:none;}
+.week-strip::-webkit-scrollbar{display:none;}
+.day-pill{
+  flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:12px 14px;border-radius:16px;cursor:pointer;border:0.5px solid transparent;
+  transition:all 0.2s;
+}
+.day-pill.active{background:var(--red);border-color:var(--red);}
+.day-pill:not(.active){background:var(--mid);border-color:var(--border);}
+.day-name{font-size:10px;letter-spacing:0.08em;color:var(--muted);text-transform:uppercase;}
+.day-num{font-family:var(--font-d);font-size:22px;color:var(--white);line-height:1;}
+.day-pill.active .day-name,.day-pill.active .day-num{color:var(--white);}
+.day-pill.active .day-name{color:rgba(255,255,255,0.7);}
+.filter-chips{display:flex;gap:8px;padding:0 20px 16px;overflow-x:auto;scrollbar-width:none;}
+.filter-chips::-webkit-scrollbar{display:none;}
+.chip{
+  flex-shrink:0;padding:6px 14px;border-radius:100px;font-size:12px;font-weight:500;
+  cursor:pointer;border:0.5px solid var(--border);background:transparent;color:var(--muted);
+  transition:all 0.2s;
+}
+.chip.active{background:var(--red);border-color:var(--red);color:var(--white);}
+.sched-list{padding:0 20px 20px;}
+.time-block{margin-bottom:20px;}
+.time-label{font-size:11px;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;margin-bottom:10px;font-weight:500;}
+.sched-card{
+  background:var(--gray);border:0.5px solid var(--border);border-radius:20px;
+  padding:16px;margin-bottom:10px;display:flex;gap:14px;align-items:center;cursor:pointer;
+  transition:border-color 0.2s;position:relative;overflow:hidden;
+}
+.sched-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--red);}
+.sched-card.booked::before{background:var(--gold);}
+.sched-card:hover{border-color:#2a2a2a;}
+.sched-duration{font-family:var(--font-d);font-size:13px;color:var(--muted);width:38px;text-align:center;flex-shrink:0;}
+.sched-info{flex:1;}
+.sched-name{font-size:14px;font-weight:600;color:var(--white);margin-bottom:2px;}
+.sched-meta{font-size:12px;color:var(--muted);font-weight:300;}
+.sched-right{text-align:right;flex-shrink:0;}
+.sched-spots{font-size:11px;color:var(--muted);}
+.btn-book{
+  background:var(--red);color:var(--white);padding:6px 14px;border-radius:100px;
+  font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:var(--font-b);
+  margin-top:4px;transition:background 0.2s;
+}
+.btn-book:hover{background:var(--red-dark);}
+.btn-booked{background:rgba(232,200,64,0.1);color:var(--gold);padding:6px 14px;border-radius:100px;font-size:11px;font-weight:600;border:0.5px solid rgba(232,200,64,0.3);margin-top:4px;}
+
+/* ========== PAYMENT ========== */
+.pay-header{padding:20px 20px 0;}
+.pay-title{font-family:var(--font-d);font-size:32px;color:var(--white);letter-spacing:0.04em;margin-bottom:4px;}
+.pay-sub{font-size:13px;color:var(--muted);font-weight:300;margin-bottom:20px;}
+.plan-cards{padding:0 20px;display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
+.plan-card{
+  background:var(--gray);border:0.5px solid var(--border);border-radius:20px;padding:18px;
+  display:flex;align-items:center;gap:16px;cursor:pointer;transition:all 0.2s;
+}
+.plan-card.selected{border-color:var(--red);background:#0f0507;}
+.plan-card.featured{border-color:rgba(232,200,64,0.3);background:#100f07;}
+.plan-radio{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.2s;}
+.plan-card.selected .plan-radio{border-color:var(--red);background:var(--red);}
+.plan-radio::after{content:'';width:6px;height:6px;border-radius:50%;background:var(--white);opacity:0;}
+.plan-card.selected .plan-radio::after{opacity:1;}
+.plan-info{flex:1;}
+.plan-name{font-family:var(--font-d);font-size:18px;color:var(--white);letter-spacing:0.04em;}
+.plan-desc{font-size:11px;color:var(--muted);font-weight:300;margin-top:2px;}
+.plan-badge-tag{display:inline-block;background:rgba(232,200,64,0.1);color:var(--gold);font-size:9px;padding:2px 7px;border-radius:100px;border:0.5px solid rgba(232,200,64,0.2);margin-top:4px;}
+.plan-price{text-align:right;flex-shrink:0;}
+.plan-amount{font-family:var(--font-d);font-size:22px;color:var(--white);line-height:1;}
+.plan-cur{font-size:12px;color:var(--red);}
+.plan-period{font-size:10px;color:var(--muted);margin-top:2px;}
+.pay-method-section{padding:0 20px;margin-bottom:20px;}
+.pay-method-title{font-size:12px;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;margin-bottom:12px;font-weight:500;}
+.pay-methods{display:flex;gap:10px;}
+.pay-method{
+  flex:1;background:var(--gray);border:0.5px solid var(--border);border-radius:16px;
+  padding:14px 12px;text-align:center;cursor:pointer;transition:all 0.2s;
+}
+.pay-method.selected{border-color:var(--red);background:#0f0507;}
+.pay-method-icon{font-size:24px;margin-bottom:6px;}
+.pay-method-name{font-size:12px;color:var(--white);font-weight:500;}
+.pay-summary{margin:0 20px 20px;background:var(--mid);border:0.5px solid var(--border);border-radius:20px;padding:18px;}
+.pay-sum-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:13px;}
+.pay-sum-row:last-child{margin-bottom:0;padding-top:10px;border-top:0.5px solid var(--border);font-weight:600;}
+.pay-sum-label{color:var(--muted);}
+.pay-sum-val{color:var(--white);}
+.pay-sum-disc{color:var(--red);}
+.btn-pay{
+  margin:0 20px 20px;width:calc(100% - 40px);background:var(--red);color:var(--white);
+  padding:18px;border-radius:100px;font-size:16px;font-weight:600;font-family:var(--font-b);
+  cursor:pointer;border:none;transition:background 0.2s;letter-spacing:0.03em;display:block;
+}
+.btn-pay:hover{background:var(--red-dark);}
+
+/* ========== ADMIN ========== */
+.admin-header{padding:20px 20px 0;}
+.admin-badge{display:inline-flex;align-items:center;gap:6px;background:var(--red-dim);border:0.5px solid rgba(232,22,42,0.2);border-radius:100px;padding:4px 10px;font-size:10px;color:var(--red);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;}
+.admin-title{font-family:var(--font-d);font-size:32px;color:var(--white);letter-spacing:0.04em;margin-bottom:4px;}
+.admin-sub{font-size:13px;color:var(--muted);font-weight:300;margin-bottom:20px;}
+.admin-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px;margin-bottom:20px;}
+.admin-stat{background:var(--gray);border:0.5px solid var(--border);border-radius:20px;padding:18px;}
+.admin-stat.red{background:#0f0507;border-color:rgba(232,22,42,0.2);}
+.as-label{font-size:10px;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;font-weight:500;}
+.as-val{font-family:var(--font-d);font-size:34px;color:var(--white);line-height:1;}
+.admin-stat.red .as-val{color:var(--red);}
+.as-change{font-size:11px;margin-top:4px;}
+.as-change.up{color:#2ecc71;}
+.as-change.dn{color:var(--red);}
+.admin-section{padding:0 20px;margin-bottom:20px;}
+.admin-section-title{font-family:var(--font-d);font-size:18px;color:var(--white);letter-spacing:0.04em;margin-bottom:12px;}
+.member-row{
+  display:flex;align-items:center;gap:12px;padding:12px 0;
+  border-bottom:0.5px solid var(--border);cursor:pointer;
+}
+.member-row:last-child{border-bottom:none;}
+.member-avatar{width:38px;height:38px;border-radius:50%;background:var(--mid);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.member-info{flex:1;}
+.member-name{font-size:13px;font-weight:600;color:var(--white);}
+.member-plan{font-size:11px;color:var(--muted);font-weight:300;}
+.member-tier{font-size:10px;padding:2px 8px;border-radius:100px;font-weight:500;}
+.tier-gold{background:rgba(232,200,64,0.1);color:var(--gold);border:0.5px solid rgba(232,200,64,0.2);}
+.tier-plat{background:rgba(176,176,224,0.1);color:var(--plat);border:0.5px solid rgba(176,176,224,0.2);}
+.tier-classic{background:var(--red-dim);color:var(--red);border:0.5px solid rgba(232,22,42,0.2);}
+.revenue-bar{background:var(--gray);border:0.5px solid var(--border);border-radius:20px;padding:18px;margin-bottom:20px;}
+.rb-header{display:flex;justify-content:space-between;margin-bottom:16px;}
+.rb-title{font-size:13px;font-weight:600;color:var(--white);}
+.rb-total{font-family:var(--font-d);font-size:18px;color:var(--red);}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.bar-day{font-size:10px;color:var(--muted);width:22px;flex-shrink:0;}
+.bar-track{flex:1;height:6px;background:var(--mid);border-radius:100px;overflow:hidden;}
+.bar-fill{height:100%;background:var(--red);border-radius:100px;transition:width 0.6s ease;}
+.bar-amount{font-size:10px;color:var(--muted);width:50px;text-align:right;flex-shrink:0;}
+.checkin-list{padding:0 20px 20px;}
+.checkin-row{
+  display:flex;align-items:center;gap:12px;background:var(--gray);
+  border:0.5px solid var(--border);border-radius:16px;padding:12px 14px;margin-bottom:8px;
+}
+.checkin-dot{width:8px;height:8px;border-radius:50%;background:#2ecc71;flex-shrink:0;box-shadow:0 0 6px rgba(46,204,113,0.5);}
+.checkin-dot.out{background:var(--muted);box-shadow:none;}
+.checkin-name{flex:1;font-size:13px;color:var(--white);font-weight:500;}
+.checkin-time{font-size:11px;color:var(--muted);}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:#1a1a1a;border:0.5px solid var(--border);border-radius:100px;
+  padding:10px 20px;font-size:13px;color:var(--white);opacity:0;transition:all 0.3s;
+  pointer-events:none;white-space:nowrap;z-index:999;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* Animations */
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+.page.active > *{animation:fadeUp 0.3s ease forwards;}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <div class="notch"></div>
+    <span class="status-time">9:41</span>
+    <div class="status-icons">
+      <svg viewBox="0 0 24 24"><path d="M1 6l4.5 4.5L12 4l6.5 6.5L23 6"/></svg>
+      <svg viewBox="0 0 24 24"><rect x="1" y="6" width="15" height="12" rx="2"/><path d="M23 10v4"/></svg>
+    </div>
+  </div>
+
+  <!-- SCREENS -->
+  <div class="screen">
+
+    <!-- LOGIN PAGE (shown first, no bottom nav) -->
+    <div class="page active" id="page-login" style="min-height:760px;">
+      <div class="login-bg">
+        <div class="login-gradient"></div>
+        <div class="login-art"></div>
+        <div class="login-art2"></div>
+        <div class="login-logo-area">
+          <div class="login-logo">ADRENALINE</div>
+          <div class="login-tagline">Fitness &amp; Performance</div>
+        </div>
+        <div class="login-content">
+          <div class="login-title">АМЖИЛТАНД<br><span>ТАВТАЙ</span><br>МОРИЛ.</div>
+          <p class="login-sub">Танхим, дасгал, хуваарь — бүгд нэг дороос.</p>
+          <div class="input-group">
+            <div class="input-label">Имэйл / Нэвтрэх нэр</div>
+            <input class="input-field" id="login-email" type="text" placeholder="name@example.com">
+          </div>
+          <div class="input-group">
+            <div class="input-label">Нууц үг</div>
+            <input class="input-field" id="login-pass" type="password" placeholder="••••••••">
+          </div>
+          <button class="btn-login" onclick="doLogin()">НЭВТРЭХ</button>
+          <div class="login-divider"><span>эсвэл</span></div>
+          <button class="btn-google" onclick="doLogin()">
+            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#ea4335" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#4285f4" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Google-ээр нэвтрэх
+          </button>
+          <div class="login-alt">Бүртгэлгүй юу? <span onclick="doLogin()">Бүртгүүлэх</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOME PAGE -->
+    <div class="page" id="page-home">
+      <div class="home-header">
+        <div>
+          <div class="home-greeting">Өглөөний мэнд 👋</div>
+          <div class="home-name">БАТБАЯР</div>
+        </div>
+        <div class="avatar">🔥</div>
+      </div>
+
+      <div class="membership-banner">
+        <div class="mb-label">Таны гишүүнчлэл</div>
+        <div class="mb-tier">GOLD</div>
+        <div class="mb-desc">Бүх үнэ тарифт 10% хөнгөлөлт</div>
+        <div class="mb-pct">10%</div>
+        <div class="mb-expires">⏱ 67 хоног үлдсэн</div>
+      </div>
+
+      <div class="section-hdr">
+        <div class="section-hdr-title">СТАТИСТИК</div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-icon">🏋️</div><div class="stat-val">24</div><div class="stat-lbl">Энэ сарын дасгал</div></div>
+        <div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-val">8</div><div class="stat-lbl">Дараалсан өдөр</div></div>
+        <div class="stat-card"><div class="stat-icon">⚡</div><div class="stat-val">142</div><div class="stat-lbl">Нийт цаг</div></div>
+      </div>
+
+      <div class="section-hdr">
+        <div class="section-hdr-title">ХУРДАН ҮЙЛДЭЛ</div>
+      </div>
+      <div class="quick-actions">
+        <div class="qa-grid">
+          <div class="qa-card red" onclick="goTo('schedule')">
+            <div class="qa-icon">📅</div>
+            <div class="qa-title">Хуваарь</div>
+            <div class="qa-sub">Анги захиалах</div>
+          </div>
+          <div class="qa-card" onclick="goTo('payment')">
+            <div class="qa-icon">💳</div>
+            <div class="qa-title">Багц сунгах</div>
+            <div class="qa-sub">Мэмбершип</div>
+          </div>
+          <div class="qa-card" onclick="showToast('Дасгалжуулагч холбогдоно')">
+            <div class="qa-icon">🏃</div>
+            <div class="qa-title">Тренер</div>
+            <div class="qa-sub">Захиалах</div>
+          </div>
+          <div class="qa-card" onclick="showToast('QR нэвтрэлт нээгдлээ')">
+            <div class="qa-icon">📱</div>
+            <div class="qa-title">QR Нэвтрэх</div>
+            <div class="qa-sub">Танхим орох</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="upcoming-section">
+        <div class="section-hdr" style="padding:0;margin-bottom:12px;">
+          <div class="section-hdr-title">ӨНӨӨДРИЙН АНГИ</div>
+          <div class="section-hdr-link" onclick="goTo('schedule')">Бүгдийг харах</div>
+        </div>
+        <div class="class-card">
+          <div class="class-time-box"><div class="class-time">06:00</div><div class="class-ampm">AM</div></div>
+          <div class="class-info">
+            <div class="class-name">Morning HIIT</div>
+            <div class="class-trainer">Дасгалжуулагч: Д. Мөнхбаяр</div>
+            <div class="class-tag">✓ Захиалагдсан</div>
+          </div>
+          <div class="class-spots"><strong>45 мин</strong><div style="font-size:10px;color:var(--gold);">Gold</div></div>
+        </div>
+        <div class="class-card">
+          <div class="class-time-box"><div class="class-time">18:30</div><div class="class-ampm">PM</div></div>
+          <div class="class-info">
+            <div class="class-name">Powerlifting</div>
+            <div class="class-trainer">Дасгалжуулагч: Б. Ганболд</div>
+            <div class="class-tag" style="background:rgba(232,200,64,0.08);border-color:rgba(232,200,64,0.2);color:var(--gold);">3 суудал үлдсэн</div>
+          </div>
+          <div class="class-spots"><strong>60 мин</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCHEDULE PAGE -->
+    <div class="page" id="page-schedule">
+      <div class="sched-header">
+        <div class="sched-title">ХУВААРЬ</div>
+        <div class="sched-sub">Өнөөдрийн анги болон давтамж</div>
+      </div>
+      <div class="week-strip">
+        <div class="day-pill" onclick="selectDay(this)"><div class="day-name">ДА</div><div class="day-num">17</div></div>
+        <div class="day-pill" onclick="selectDay(this)"><div class="day-name">МЯ</div><div class="day-num">18</div></div>
+        <div class="day-pill active" onclick="selectDay(this)"><div class="day-name">ЛХА</div><div class="day-num">19</div></div>
+        <div class="day-pill" onclick="selectDay(this)"><div class="day-name">ПҮ</div><div class="day-num">20</div></div>
+        <div class="day-pill" onclick="selectDay(this)"><div class="day-name">БА</div><div class="day-num">21</div></div>
+        <div class="day-pill" onclick="selectDay(this)"><div class="day-name">БЯ</div><div class="day-num">22</div></div>
+        <div class="day-pill" onclick="selectDay(this)"><div class="day-name">НЯ</div><div class="day-num">23</div></div>
+      </div>
+      <div class="filter-chips">
+        <div class="chip active" onclick="selectChip(this)">Бүгд</div>
+        <div class="chip" onclick="selectChip(this)">Cardio</div>
+        <div class="chip" onclick="selectChip(this)">Strength</div>
+        <div class="chip" onclick="selectChip(this)">HIIT</div>
+        <div class="chip" onclick="selectChip(this)">Yoga</div>
+      </div>
+      <div class="sched-list">
+        <div class="time-block">
+          <div class="time-label">Өглөө</div>
+          <div class="sched-card booked">
+            <div class="sched-duration">60 мин</div>
+            <div class="sched-info">
+              <div class="sched-name">Morning HIIT</div>
+              <div class="sched-meta">06:00 · Д. Мөнхбаяр · 12 хүн</div>
+            </div>
+            <div class="sched-right"><div class="sched-spots">Захиалсан</div><div class="btn-booked">✓ Бүртгэлтэй</div></div>
+          </div>
+          <div class="sched-card">
+            <div class="sched-duration">45 мин</div>
+            <div class="sched-info">
+              <div class="sched-name">Yoga Flow</div>
+              <div class="sched-meta">07:30 · Н. Энхцэцэг · 8 хүн</div>
+            </div>
+            <div class="sched-right"><div class="sched-spots">6 суудал</div><button class="btn-book" onclick="bookClass(this)">Захиалах</button></div>
+          </div>
+        </div>
+        <div class="time-block">
+          <div class="time-label">Өдөр</div>
+          <div class="sched-card">
+            <div class="sched-duration">60 мин</div>
+            <div class="sched-info">
+              <div class="sched-name">Strength Training</div>
+              <div class="sched-meta">12:00 · Б. Ганболд · 10 хүн</div>
+            </div>
+            <div class="sched-right"><div class="sched-spots">4 суудал</div><button class="btn-book" onclick="bookClass(this)">Захиалах</button></div>
+          </div>
+          <div class="sched-card">
+            <div class="sched-duration">30 мин</div>
+            <div class="sched-info">
+              <div class="sched-name">Core &amp; Abs</div>
+              <div class="sched-meta">13:30 · Д. Мөнхбаяр · 15 хүн</div>
+            </div>
+            <div class="sched-right"><div class="sched-spots">2 суудал</div><button class="btn-book" onclick="bookClass(this)">Захиалах</button></div>
+          </div>
+        </div>
+        <div class="time-block">
+          <div class="time-label">Орой</div>
+          <div class="sched-card">
+            <div class="sched-duration">60 мин</div>
+            <div class="sched-info">
+              <div class="sched-name">Powerlifting</div>
+              <div class="sched-meta">18:30 · Б. Ганболд · 8 хүн</div>
+            </div>
+            <div class="sched-right"><div class="sched-spots">3 суудал</div><button class="btn-book" onclick="bookClass(this)">Захиалах</button></div>
+          </div>
+          <div class="sched-card">
+            <div class="sched-duration">45 мин</div>
+            <div class="sched-info">
+              <div class="sched-name">Evening Cardio</div>
+              <div class="sched-meta">20:00 · Н. Энхцэцэг · 20 хүн</div>
+            </div>
+            <div class="sched-right"><div class="sched-spots">9 суудал</div><button class="btn-book" onclick="bookClass(this)">Захиалах</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYMENT PAGE -->
+    <div class="page" id="page-payment">
+      <div class="pay-header">
+        <div class="pay-title">ТӨЛБӨР</div>
+        <div class="pay-sub">Багцаа сонгоод мэмбершипээ үргэлжлүүлэх</div>
+      </div>
+      <div class="plan-cards">
+        <div class="plan-card" onclick="selectPlan(this,'1 САР',180000)">
+          <div class="plan-radio"></div>
+          <div class="plan-info"><div class="plan-name">1 САР</div><div class="plan-desc">Танхимд нэвтрэх эрх</div></div>
+          <div class="plan-price"><div class="plan-amount"><span class="plan-cur">₮</span>180,000</div><div class="plan-period">нэг сар</div></div>
+        </div>
+        <div class="plan-card featured" onclick="selectPlan(this,'3 САР',320000)">
+          <div class="plan-radio"></div>
+          <div class="plan-info">
+            <div class="plan-name">3 САР</div>
+            <div class="plan-desc">Танхимд нэвтрэх эрх</div>
+            <div class="plan-badge-tag">⭐ 11% хэмнэлт</div>
+          </div>
+          <div class="plan-price"><div class="plan-amount"><span class="plan-cur">₮</span>320,000</div><div class="plan-period">гурван сар</div></div>
+        </div>
+        <div class="plan-card" onclick="selectPlan(this,'6 САР',580000)">
+          <div class="plan-radio"></div>
+          <div class="plan-info"><div class="plan-name">6 САР</div><div class="plan-desc">Танхим + VIP нэвтрэх</div></div>
+          <div class="plan-price"><div class="plan-amount"><span class="plan-cur">₮</span>580,000</div><div class="plan-period">зургаан сар</div></div>
+        </div>
+        <div class="plan-card" onclick="selectPlan(this,'1 ЖИЛ',980000)">
+          <div class="plan-radio"></div>
+          <div class="plan-info">
+            <div class="plan-name">1 ЖИЛ</div>
+            <div class="plan-desc">Бүрэн эрхтэй Platinum</div>
+            <div class="plan-badge-tag" style="background:rgba(176,176,224,0.1);color:var(--plat);border-color:rgba(176,176,224,0.2);">💎 15% хэмнэлт</div>
+          </div>
+          <div class="plan-price"><div class="plan-amount"><span class="plan-cur">₮</span>980,000</div><div class="plan-period">нэг жил</div></div>
+        </div>
+      </div>
+      <div class="pay-method-section">
+        <div class="pay-method-title">Төлбөрийн арга</div>
+        <div class="pay-methods">
+          <div class="pay-method selected" onclick="selectMethod(this)">
+            <div class="pay-method-icon">📲</div>
+            <div class="pay-method-name">QPay</div>
+          </div>
+          <div class="pay-method" onclick="selectMethod(this)">
+            <div class="pay-method-icon">🏦</div>
+            <div class="pay-method-name">Дансаар</div>
+          </div>
+          <div class="pay-method" onclick="selectMethod(this)">
+            <div class="pay-method-icon">💳</div>
+            <div class="pay-method-name">Карт</div>
+          </div>
+        </div>
+      </div>
+      <div class="pay-summary" id="pay-summary">
+        <div class="pay-sum-row"><span class="pay-sum-label">Багц</span><span class="pay-sum-val">—</span></div>
+        <div class="pay-sum-row"><span class="pay-sum-label">Gold хөнгөлөлт (-10%)</span><span class="pay-sum-disc">—</span></div>
+        <div class="pay-sum-row"><span class="pay-sum-label">Нийт дүн</span><span class="pay-sum-val" id="pay-total">₮0</span></div>
+      </div>
+      <button class="btn-pay" onclick="doPay()">ТӨЛБӨР ХИЙХ</button>
+    </div>
+
+    <!-- ADMIN PAGE -->
+    <div class="page" id="page-admin">
+      <div class="admin-header">
+        <div class="admin-badge">⚙️ Admin</div>
+        <div class="admin-title">DASHBOARD</div>
+        <div class="admin-sub" id="admin-date">Adrenaline Fitness</div>
+      </div>
+
+      <!-- Гишүү нэмэх форм -->
+      <div class="admin-section" id="add-member-section" style="display:none;">
+        <div class="admin-section-title">ГИШҮҮ НЭМЭХ</div>
+        <div style="background:var(--gray);border:0.5px solid var(--border);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px;">
+          <input class="input-field" id="new-ner" placeholder="Овог нэр" />
+          <input class="input-field" id="new-utas" placeholder="Утасны дугаар" />
+          <select class="input-field" id="new-bagts" style="color:var(--white);background:var(--mid);">
+            <option value="1 сар">1 сар — ₮180,000</option>
+            <option value="3 сар">3 сар — ₮320,000</option>
+            <option value="6 сар">6 сар — ₮580,000</option>
+            <option value="1 жил">1 жил — ₮980,000</option>
+          </select>
+          <select class="input-field" id="new-tier" style="color:var(--white);background:var(--mid);">
+            <option value="Classic">Classic</option>
+            <option value="Gold">Gold</option>
+            <option value="Platinum">Platinum</option>
+          </select>
+          <div style="display:flex;gap:10px;">
+            <button class="btn-login" onclick="addMember()" style="margin:0;flex:1;">НЭМЭХ</button>
+            <button onclick="document.getElementById('add-member-section').style.display='none'" style="flex:1;background:var(--mid);color:var(--white);border:0.5px solid var(--border);border-radius:100px;padding:16px;cursor:pointer;font-family:var(--font-b);font-size:15px;">БОЛИХ</button>
+          </div>
+        </div>
+      </div>
+      <div class="admin-stats">
+        <div class="admin-stat red">
+          <div class="as-label">Нийт гишүүд</div>
+          <div class="as-val" id="stat-total">—</div>
+          <div class="as-change up" id="stat-active"></div>
+        </div>
+        <div class="admin-stat">
+          <div class="as-label">Өнөөдөр ирсэн</div>
+          <div class="as-val" id="stat-checkin">—</div>
+          <div class="as-change up"></div>
+        </div>
+        <div class="admin-stat">
+          <div class="as-label">Хүлээгдэж буй</div>
+          <div class="as-val" id="stat-pending">—</div>
+          <div class="as-change" style="color:var(--muted);">Шинэ бүртгэл</div>
+        </div>
+      </div>
+
+      <!-- Гишүү нэмэх товч -->
+      <div style="padding:0 20px;margin-bottom:16px;">
+        <button class="btn-login" style="margin:0;" onclick="document.getElementById('add-member-section').style.display='block';document.getElementById('add-member-section').scrollIntoView({behavior:'smooth'})">+ ГИШҮҮ НЭМЭХ</button>
+      </div>
+
+      <!-- Гишүүдийн жагсаалт -->
+      <div class="admin-section">
+        <div class="admin-section-title">ГИШҮҮД</div>
+        <div style="background:var(--gray);border:0.5px solid var(--border);border-radius:20px;padding:6px 16px;" id="members-list">
+          <div style="text-align:center;padding:20px;color:var(--muted);">Уншиж байна...</div>
+        </div>
+      </div>
+
+      <!-- Ирц бүртгэх -->
+      <div class="admin-section">
+        <div class="admin-section-title">ИРЦ БҮРТГЭХ</div>
+        <div style="background:var(--gray);border:0.5px solid var(--border);border-radius:20px;padding:16px;">
+          <select class="input-field" id="checkin-member" style="color:var(--white);background:var(--mid);margin-bottom:10px;">
+            <option value="">Гишүүн сонгох...</option>
+          </select>
+          <button class="btn-login" style="margin:0;" onclick="doCheckin()">✓ ИРЦИЙГ БҮРТГЭХ</button>
+        </div>
+      </div>
+
+      <!-- Өнөөдөр ирсэн -->
+      <div class="admin-section" style="padding-bottom:20px;">
+        <div class="admin-section-title">ӨНӨӨДӨР ИРСЭН</div>
+        <div class="checkin-list" style="padding:0;background:var(--gray);border:0.5px solid var(--border);border-radius:20px;padding:6px 16px;" id="checkin-list">
+          <div style="text-align:center;padding:20px;color:var(--muted);">Уншиж байна...</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end screen -->
+
+  <!-- BOTTOM NAV (hidden on login) -->
+  <div class="bottom-nav" id="bottom-nav" style="display:none;">
+    <div class="nav-item active" onclick="goTo('home')" id="nav-home">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Нүүр</span>
+      <div class="dot"></div>
+    </div>
+    <div class="nav-item" onclick="goTo('schedule')" id="nav-schedule">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>Хуваарь</span>
+      <div class="dot"></div>
+    </div>
+    <div class="nav-item" onclick="goTo('payment')" id="nav-payment">
+      <svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      <span>Төлбөр</span>
+      <div class="dot"></div>
+    </div>
+    <div class="nav-item" onclick="goTo('admin')" id="nav-admin" style="display:none;">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      <span>Admin</span>
+      <div class="dot"></div>
+    </div>
+  </div>
+
+</div><!-- end phone -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== SUPABASE =====
+const SUPA_URL = 'https://xodenxapwelkmzqrhfxj.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhvZGVueGFwd2Vsa216cXJoZnhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNzIyODIsImV4cCI6MjA4OTY0ODI4Mn0.TbQHH22KPHCFtbzgvhgM3eYGZ71sTj1492Zb_A1GD-M';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+var selectedPlanPrice = 0;
+var selectedPlanName = '';
+
+// ===== NAVIGATION =====
+var isAdmin = false;
+
+function doLogin(){
+  var user = document.getElementById('login-email') ? document.getElementById('login-email').value : '';
+  var pass = document.getElementById('login-pass') ? document.getElementById('login-pass').value : '';
+  
+  // Админ шалгах
+  if(user === 'admin' && pass === 'adrenaline2026'){
+    isAdmin = true;
+    document.getElementById('nav-admin').style.display = 'flex';
+    showToast('Тавтай морил, Админ! 🔥');
+  } else {
+    isAdmin = false;
+    document.getElementById('nav-admin').style.display = 'none';
+    showToast('Тавтай морил! 🔥');
+  }
+  document.getElementById('page-login').classList.remove('active');
+  document.getElementById('bottom-nav').style.display='flex';
+  goTo('home');
+}
+
+function goTo(page){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+  var navEl = document.getElementById('nav-'+page);
+  if(navEl) navEl.classList.add('active');
+  if(page === 'admin') loadAdminData();
+}
+
+function selectDay(el){
+  document.querySelectorAll('.day-pill').forEach(function(d){d.classList.remove('active');});
+  el.classList.add('active');
+}
+function selectChip(el){
+  document.querySelectorAll('.chip').forEach(function(c){c.classList.remove('active');});
+  el.classList.add('active');
+}
+function bookClass(btn){
+  var right = btn.parentElement;
+  right.innerHTML = '<div class="sched-spots">Захиалсан</div><div class="btn-booked">✓ Бүртгэлтэй</div>';
+  btn.closest('.sched-card').classList.add('booked');
+  showToast('Анги амжилттай захиалагдлаа ✓');
+}
+function selectPlan(card, name, price){
+  document.querySelectorAll('.plan-card').forEach(function(c){c.classList.remove('selected');});
+  card.classList.add('selected');
+  selectedPlanName = name;
+  selectedPlanPrice = price;
+  var disc = Math.round(price * 0.10);
+  var final = price - disc;
+  var rows = document.querySelectorAll('#pay-summary .pay-sum-row');
+  rows[0].querySelector('.pay-sum-val').textContent = name;
+  rows[1].querySelector('.pay-sum-disc').textContent = '-₮' + disc.toLocaleString();
+  rows[2].querySelector('.pay-sum-val').textContent = '₮' + final.toLocaleString();
+  document.getElementById('pay-total').textContent = '₮' + final.toLocaleString();
+}
+function selectMethod(el){
+  document.querySelectorAll('.pay-method').forEach(function(m){m.classList.remove('selected');});
+  el.classList.add('selected');
+}
+function doPay(){
+  if(!selectedPlanPrice){showToast('Багц сонгоно уу');return;}
+  showToast('Төлбөр амжилттай! ✓');
+  setTimeout(function(){goTo('home');},1500);
+}
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');},2500);
+}
+
+// ===== ADMIN DATA =====
+async function loadAdminData() {
+  // Огноо
+  var now = new Date();
+  document.getElementById('admin-date').textContent = 'Adrenaline Fitness · ' + now.toLocaleDateString('mn-MN');
+
+  // Гишүүд татах
+  var { data: members, error } = await sb.from('Гишүүд').select('*').order('created_at', {ascending: false});
+  if(error){ showToast('Алдаа: ' + error.message); return; }
+
+  // Статистик
+  document.getElementById('stat-total').textContent = members ? members.length : 0;
+
+  // Гишүүдийн жагсаалт
+  var list = document.getElementById('members-list');
+  var sel = document.getElementById('checkin-member');
+  sel.innerHTML = '<option value="">Гишүүн сонгох...</option>';
+
+  if(!members || members.length === 0){
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">Гишүүн байхгүй байна</div>';
+  } else {
+    list.innerHTML = members.map(function(m){
+      var tierClass = m.tier === 'Gold' ? 'tier-gold' : m.tier === 'Platinum' ? 'tier-plat' : 'tier-classic';
+      var emoji = m.ner && m.ner.length > 0 ? (m.ner.charCodeAt(0) % 2 === 0 ? '👨' : '👩') : '👤';
+      return '<div class="member-row">' +
+        '<div class="member-avatar">' + emoji + '</div>' +
+        '<div class="member-info">' +
+          '<div class="member-name">' + (m.ner || '—') + '</div>' +
+          '<div class="member-plan">' + (m.bagts || '—') + ' · ' + (m.utas || '') + '</div>' +
+        '</div>' +
+        '<span class="member-tier ' + tierClass + '">' + (m.tier || 'Classic') + '</span>' +
+        '<button onclick="deleteMember(' + m.id + ')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 8px;">✕</button>' +
+      '</div>';
+    }).join('');
+
+    members.forEach(function(m){
+      var opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.ner + ' — ' + (m.bagts || '');
+      sel.appendChild(opt);
+    });
+  }
+
+  // Өнөөдрийн ирц
+  var today = new Date().toISOString().split('T')[0];
+  var { data: checkins } = await sb.from('checkins').select('*, Гишүүд(ner)').gte('irsen_tsag', today + 'T00:00:00').order('irsen_tsag', {ascending: false});
+  document.getElementById('stat-checkin').textContent = checkins ? checkins.length : 0;
+
+  var clist = document.getElementById('checkin-list');
+  if(!checkins || checkins.length === 0){
+    clist.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">Өнөөдөр ирсэн хүн байхгүй</div>';
+  } else {
+    clist.innerHTML = checkins.map(function(c){
+      var t = new Date(c.irsen_tsag);
+      var tsag = t.getHours().toString().padStart(2,'0') + ':' + t.getMinutes().toString().padStart(2,'0');
+      return '<div class="checkin-row"><div class="checkin-dot"></div><div class="checkin-name">' + (c['Гишүүд'] ? c['Гишүүд'].ner : '—') + '</div><div class="checkin-time">' + tsag + '</div></div>';
+    }).join('');
+  }
+  document.getElementById('stat-pending').textContent = checkins ? checkins.length : 0;
+}
+
+// ===== ГИШҮҮН НЭМЭХ =====
+async function addMember() {
+  var ner = document.getElementById('new-ner').value.trim();
+  var utas = document.getElementById('new-utas').value.trim();
+  var bagts = document.getElementById('new-bagts').value;
+  var tier = document.getElementById('new-tier').value;
+  if(!ner){ showToast('Нэр оруулна уу'); return; }
+
+  var ehleh = new Date();
+  var duusah = new Date();
+  if(bagts === '1 сар') duusah.setMonth(duusah.getMonth()+1);
+  else if(bagts === '3 сар') duusah.setMonth(duusah.getMonth()+3);
+  else if(bagts === '6 сар') duusah.setMonth(duusah.getMonth()+6);
+  else duusah.setFullYear(duusah.getFullYear()+1);
+
+  var { error } = await sb.from('Гишүүд').insert([{
+    ner: ner, utas: utas, bagts: bagts, tier: tier,
+    ehleh_ognoo: ehleh.toISOString().split('T')[0],
+    duusah_ognoo: duusah.toISOString().split('T')[0],
+    tolov: 'идэвхтэй'
+  }]);
+
+  if(error){ showToast('Алдаа: ' + error.message); return; }
+  showToast(ner + ' амжилттай нэмэгдлээ! ✓');
+  document.getElementById('new-ner').value = '';
+  document.getElementById('new-utas').value = '';
+  document.getElementById('add-member-section').style.display = 'none';
+  loadAdminData();
+}
+
+// ===== ГИШҮҮН УСТГАХ =====
+async function deleteMember(id) {
+  if(!confirm('Энэ гишүүнийг устгах уу?')) return;
+  await sb.from('checkins').delete().eq('Гишүүд_id', id);
+  var { error } = await sb.from('Гишүүд').delete().eq('id', id);
+  if(error){ showToast('Алдаа: ' + error.message); return; }
+  showToast('Гишүүн устгагдлаа');
+  loadAdminData();
+}
+
+// ===== ИРЦ БҮРТГЭХ =====
+async function doCheckin() {
+  var id = document.getElementById('checkin-member').value;
+  if(!id){ showToast('Гишүүн сонгоно уу'); return; }
+  var { error } = await sb.from('checkins').insert([{ Гишүүд_id: parseInt(id) }]);
+  if(error){ showToast('Алдаа: ' + error.message); return; }
+  showToast('Ирц амжилттай бүртгэгдлээ ✓');
+  loadAdminData();
+}
+</script>
+</body>
+</html>
